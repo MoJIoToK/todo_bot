@@ -1,7 +1,7 @@
 import os, sys
 
 import telebot
-import random
+from random import choice
 
 TOKEN_FILENAME = "token.txt"
 GREATING = "Ба! Знакомые все лица!"
@@ -14,6 +14,7 @@ HELP = """
 /exit - выход.
 /random - добавлять случайную задачу на сегодня."""
 
+tasks = dict()
 
 # GetToken returns token
 def getToken():
@@ -28,22 +29,16 @@ def getToken():
         sys.exit()
     return token
 
-
 token = getToken()
 
 bot = telebot.TeleBot(token)
 
-tasks = {
-}
-
-
 def add_todo(date, task):
-    if date in tasks:
+    date = date.lower()
+    if tasks.get(date) is not None:
         tasks[date].append(task)
     else:
-        tasks[date] = []
-        tasks[date].append(task)
-    print(f"Задача {task} добавлена по дате {date}!")
+        tasks[date] = [task]
 
 @bot.message_handler(commands=["help"])
 def help(message):
@@ -51,35 +46,26 @@ def help(message):
 
 @bot.message_handler(commands=["add"])
 def add(message):
-    command = message.text.split(maxsplit=2)
-    date = command[1].lower()
-    task = command[2]
+    _, date, tail = message.text.split(maxsplit=2)
+    task = ' '.join([tail])
     add_todo(date, task)
-    text = "Task - " + task + " - is added to " + date
-    bot.send_message(message.chat.id, text)
-
+    bot.send_message(message.chat.id, f'Задача {task} добавлена на дату {date}')
 
 @bot.message_handler(commands=["random"])
-def random_add(message):
-    task = random.choice(RANDOM_TASKS)
-    date = "today"
-    add_todo("Сегодня", task)
-    text = "Task - " + task + " - is added to " + date
-    bot.send_message(message.chat.id, text)
-
+def random(message):
+    task = choice(RANDOM_TASKS)
+    add_todo('сегодня', task)
+    bot.send_message(message.chat.id, f'Задача {task} добавлена на сегодня')
 
 @bot.message_handler(commands=["show", "print"])
 def show(message):
-    command = message.text.split(maxsplit=1)
-    date = command[1].lower
-    text = ""
+    date = message.text.split()[1].lower()
     if date in tasks:
-        text = date.upper() + "\n"
+        text = ''
         for task in tasks[date]:
-            text = text + " - " + task + "\n"
+            text += f'[ ] {task}\n'
     else:
-        text = "Такой даты не обнаружено!"
-
+        text = 'Такой даты нет'
     bot.send_message(message.chat.id, text)
 
 bot.polling(none_stop=True)
